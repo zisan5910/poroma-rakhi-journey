@@ -1,56 +1,77 @@
 import { useEffect, useRef, useState } from 'react';
 
-export const useBackgroundMusic = (audioUrl: string, volume: number = 0.2) => {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+// Global audio instance to persist across page changes
+let globalAudio: HTMLAudioElement | null = null;
+let isGlobalAudioInitialized = false;
+
+export const useBackgroundMusic = (audioUrl: string, volume: number = 0.15) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    // Create audio element
-    audioRef.current = new Audio(audioUrl);
-    audioRef.current.loop = true;
-    audioRef.current.volume = volume;
-    audioRef.current.preload = 'auto';
+    // Only initialize once globally
+    if (!isGlobalAudioInitialized) {
+      globalAudio = new Audio(audioUrl);
+      globalAudio.loop = true;
+      globalAudio.volume = volume;
+      globalAudio.preload = 'auto';
+      isGlobalAudioInitialized = true;
 
-    const audio = audioRef.current;
-
-    // Event listeners
-    const handleCanPlayThrough = () => {
-      setIsLoaded(true);
-      // Auto start music as soon as it's loaded
-      audio.play().catch(() => {
-        // If autoplay fails due to browser policy, try on first user interaction
-        const startOnInteraction = () => {
-          audio.play().catch(console.error);
-          document.removeEventListener('click', startOnInteraction);
-          document.removeEventListener('touchstart', startOnInteraction);
-          document.removeEventListener('scroll', startOnInteraction);
-        };
+      // More aggressive autoplay attempts for mobile
+      const handleCanPlayThrough = () => {
+        setIsLoaded(true);
         
-        document.addEventListener('click', startOnInteraction, { once: true });
-        document.addEventListener('touchstart', startOnInteraction, { once: true });
-        document.addEventListener('scroll', startOnInteraction, { once: true });
-      });
-    };
+        // Try to play immediately
+        const playPromise = globalAudio?.play();
+        
+        if (playPromise !== undefined) {
+          playPromise.catch(() => {
+            // If autoplay fails, try multiple interaction events
+            const startOnInteraction = () => {
+              globalAudio?.play().then(() => {
+                setIsPlaying(true);
+              }).catch(console.error);
+              
+              // Remove all listeners after first successful play
+              document.removeEventListener('click', startOnInteraction);
+              document.removeEventListener('touchstart', startOnInteraction);
+              document.removeEventListener('scroll', startOnInteraction);
+              document.removeEventListener('keydown', startOnInteraction);
+              document.removeEventListener('mousemove', startOnInteraction);
+            };
+            
+            // Add multiple event listeners for better mobile coverage
+            document.addEventListener('click', startOnInteraction, { once: true });
+            document.addEventListener('touchstart', startOnInteraction, { once: true });
+            document.addEventListener('scroll', startOnInteraction, { once: true });
+            document.addEventListener('keydown', startOnInteraction, { once: true });
+            document.addEventListener('mousemove', startOnInteraction, { once: true });
+          });
+        }
+      };
 
-    const handlePlay = () => {
-      setIsPlaying(true);
-    };
+      const handlePlay = () => {
+        setIsPlaying(true);
+      };
 
-    const handlePause = () => {
-      setIsPlaying(false);
-    };
+      const handlePause = () => {
+        setIsPlaying(false);
+      };
 
-    audio.addEventListener('canplaythrough', handleCanPlayThrough);
-    audio.addEventListener('play', handlePlay);
-    audio.addEventListener('pause', handlePause);
+      globalAudio.addEventListener('canplaythrough', handleCanPlayThrough);
+      globalAudio.addEventListener('play', handlePlay);
+      globalAudio.addEventListener('pause', handlePause);
+      
+      // Try immediate load
+      globalAudio.load();
+    } else if (globalAudio) {
+      // If already initialized, just sync state
+      setIsPlaying(!globalAudio.paused);
+      setIsLoaded(globalAudio.readyState >= 3);
+    }
 
-    return () => {
-      audio.removeEventListener('canplaythrough', handleCanPlayThrough);
-      audio.removeEventListener('play', handlePlay);
-      audio.removeEventListener('pause', handlePause);
-      audio.pause();
-    };
+    // Don't clean up global audio on unmount
+    return () => {};
   }, [audioUrl, volume]);
 
   return {

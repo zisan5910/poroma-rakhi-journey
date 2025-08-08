@@ -2,12 +2,10 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Heart, Check, Home, Sparkles } from 'lucide-react';
 import rakhiImage from "@/assets/rakhi-illustration.png";
-import { useBackgroundMusic } from "@/hooks/useBackgroundMusic";
 import { OptimizedImage } from "@/components/OptimizedImage";
 
 const Promise = () => {
   const navigate = useNavigate();
-  useBackgroundMusic('/assets/rakhi-music.mp3', 0.15);
 
   const promises = [
     "I promise to protect you — always",

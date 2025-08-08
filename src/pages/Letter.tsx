@@ -3,12 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Heart, Sparkles } from 'lucide-react';
-import { useBackgroundMusic } from "@/hooks/useBackgroundMusic";
 
 const Letter = () => {
   const [message, setMessage] = useState('');
   const navigate = useNavigate();
-  useBackgroundMusic('/assets/rakhi-music.mp3', 0.15);
 
   const handleSendMessage = () => {
     const subject = "Raksha Bandhan Letter for You";

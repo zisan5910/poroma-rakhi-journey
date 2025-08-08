@@ -3,13 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Mail, Sparkles, Heart } from 'lucide-react';
 import poromaImage from "@/assets/poroma-image.png";
-import { useBackgroundMusic } from "@/hooks/useBackgroundMusic";
 import { OptimizedImage } from "@/components/OptimizedImage";
 
 const Welcome = () => {
   const [showEnvelope, setShowEnvelope] = useState(false);
   const navigate = useNavigate();
-  useBackgroundMusic('/assets/rakhi-music.mp3', 0.15);
 
   const handleNextClick = () => {
     setShowEnvelope(true);

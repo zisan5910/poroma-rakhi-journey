@@ -8,6 +8,7 @@ import Welcome from "./pages/Welcome";
 import Letter from "./pages/Letter";
 import Promise from "./pages/Promise";
 import Index from "./pages/Index";
+import { useBackgroundMusic } from "@/hooks/useBackgroundMusic";
 
 const queryClient = new QueryClient();
 
@@ -21,21 +22,32 @@ const ScrollToTop = () => {
   return null;
 };
 
+const AppContent = () => {
+  // Initialize global background music
+  useBackgroundMusic('/assets/rakhi-music.mp3', 0.15);
+  
+  return (
+    <>
+      <ScrollToTop />
+      <Routes>
+        <Route path="/" element={<Welcome />} />
+        <Route path="/letter" element={<Letter />} />
+        <Route path="/promise" element={<Promise />} />
+        <Route path="/index" element={<Index />} />
+        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+        <Route path="*" element={<Welcome />} />
+      </Routes>
+    </>
+  );
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <ScrollToTop />
-        <Routes>
-          <Route path="/" element={<Welcome />} />
-          <Route path="/letter" element={<Letter />} />
-          <Route path="/promise" element={<Promise />} />
-          <Route path="/index" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<Welcome />} />
-        </Routes>
+        <AppContent />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
