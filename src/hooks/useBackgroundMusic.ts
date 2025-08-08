@@ -1,5 +1,4 @@
-
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 // Global audio instance to persist across page changes
 let globalAudio: HTMLAudioElement | null = null;
@@ -8,8 +7,6 @@ let isGlobalAudioInitialized = false;
 export const useBackgroundMusic = (audioUrl: string, volume: number = 0.15) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
-  const attemptCountRef = useRef(0);
-  const maxAttempts = 50; // Maximum retry attempts
 
   useEffect(() => {
     // Only initialize once globally
@@ -26,10 +23,8 @@ export const useBackgroundMusic = (audioUrl: string, volume: number = 0.15) => {
       
       isGlobalAudioInitialized = true;
 
-      const tryToPlayMusic = async () => {
-        if (!globalAudio || attemptCountRef.current >= maxAttempts) return;
-        
-        attemptCountRef.current++;
+      const forcePlayMusic = async () => {
+        if (!globalAudio) return;
         
         try {
           // Set volume before playing
@@ -38,13 +33,10 @@ export const useBackgroundMusic = (audioUrl: string, volume: number = 0.15) => {
           setIsPlaying(true);
           console.log('Background music started successfully');
         } catch (error) {
-          console.log(`Auto-play attempt ${attemptCountRef.current} failed:`, error);
+          console.log('Auto-play failed, will retry:', error);
           
-          // Continue trying with different strategies
-          if (attemptCountRef.current < maxAttempts) {
-            // Try again after a short delay
-            setTimeout(tryToPlayMusic, 200 + (attemptCountRef.current * 100));
-          }
+          // Try again in a moment
+          setTimeout(forcePlayMusic, 500);
         }
       };
 
@@ -78,7 +70,7 @@ export const useBackgroundMusic = (audioUrl: string, volume: number = 0.15) => {
         events.forEach(event => {
           document.addEventListener(event, startOnUserInteraction, { 
             passive: true, 
-            once: false  // Allow multiple attempts
+            once: false
           });
           window.addEventListener(event, startOnUserInteraction, { 
             passive: true, 
@@ -90,7 +82,7 @@ export const useBackgroundMusic = (audioUrl: string, volume: number = 0.15) => {
       const handleCanPlay = () => {
         setIsLoaded(true);
         console.log('Audio loaded, attempting to play...');
-        tryToPlayMusic();
+        forcePlayMusic();
       };
 
       const handlePlay = () => {
@@ -126,22 +118,27 @@ export const useBackgroundMusic = (audioUrl: string, volume: number = 0.15) => {
       // Add interaction listeners immediately
       addInteractionListeners();
       
-      // Try to play immediately
-      setTimeout(tryToPlayMusic, 100);
+      // Try to play immediately - multiple attempts
+      setTimeout(forcePlayMusic, 100);
+      setTimeout(forcePlayMusic, 500);
+      setTimeout(forcePlayMusic, 1000);
       
       // Aggressive retry strategy
       const retryInterval = setInterval(() => {
-        if (globalAudio && globalAudio.paused && attemptCountRef.current < maxAttempts) {
-          tryToPlayMusic();
-        } else if (!globalAudio?.paused || attemptCountRef.current >= maxAttempts) {
+        if (globalAudio && globalAudio.paused) {
+          forcePlayMusic();
+        } else {
           clearInterval(retryInterval);
         }
-      }, 1000);
+      }, 2000);
       
-      // Try on page visibility change (when user comes back to tab)
+      // Clear interval after 30 seconds to avoid infinite retries
+      setTimeout(() => clearInterval(retryInterval), 30000);
+      
+      // Try on page visibility change
       const handleVisibilityChange = () => {
         if (!document.hidden && globalAudio && globalAudio.paused) {
-          tryToPlayMusic();
+          forcePlayMusic();
         }
       };
       
@@ -150,7 +147,7 @@ export const useBackgroundMusic = (audioUrl: string, volume: number = 0.15) => {
       // Try on page focus
       const handleFocus = () => {
         if (globalAudio && globalAudio.paused) {
-          tryToPlayMusic();
+          forcePlayMusic();
         }
       };
       
