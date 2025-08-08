@@ -15,39 +15,57 @@ export const useBackgroundMusic = (audioUrl: string, volume: number = 0.15) => {
       globalAudio.loop = true;
       globalAudio.volume = volume;
       globalAudio.preload = 'auto';
+      
+      // Force autoplay attributes for mobile
+      globalAudio.setAttribute('autoplay', 'true');
+      globalAudio.setAttribute('muted', 'false');
+      globalAudio.setAttribute('playsinline', 'true');
+      
       isGlobalAudioInitialized = true;
 
-      // More aggressive autoplay attempts for mobile
+      const startMusic = async () => {
+        try {
+          await globalAudio?.play();
+          setIsPlaying(true);
+        } catch (error) {
+          console.log('Auto-play blocked, trying with user interaction');
+          
+          // Immediate interaction attempt
+          const startOnAnyInteraction = async () => {
+            try {
+              await globalAudio?.play();
+              setIsPlaying(true);
+              
+              // Remove all listeners after successful play
+              document.removeEventListener('click', startOnAnyInteraction);
+              document.removeEventListener('touchstart', startOnAnyInteraction);
+              document.removeEventListener('touchend', startOnAnyInteraction);
+              document.removeEventListener('scroll', startOnAnyInteraction);
+              document.removeEventListener('keydown', startOnAnyInteraction);
+              document.removeEventListener('mousemove', startOnAnyInteraction);
+              window.removeEventListener('load', startOnAnyInteraction);
+            } catch (e) {
+              console.error('Failed to play audio:', e);
+            }
+          };
+          
+          // Add listeners for any possible interaction
+          document.addEventListener('click', startOnAnyInteraction, { passive: true });
+          document.addEventListener('touchstart', startOnAnyInteraction, { passive: true });
+          document.addEventListener('touchend', startOnAnyInteraction, { passive: true });
+          document.addEventListener('scroll', startOnAnyInteraction, { passive: true });
+          document.addEventListener('keydown', startOnAnyInteraction, { passive: true });
+          document.addEventListener('mousemove', startOnAnyInteraction, { passive: true });
+          window.addEventListener('load', startOnAnyInteraction, { passive: true });
+          
+          // Try again after a short delay
+          setTimeout(startOnAnyInteraction, 100);
+        }
+      };
+
       const handleCanPlayThrough = () => {
         setIsLoaded(true);
-        
-        // Try to play immediately
-        const playPromise = globalAudio?.play();
-        
-        if (playPromise !== undefined) {
-          playPromise.catch(() => {
-            // If autoplay fails, try multiple interaction events
-            const startOnInteraction = () => {
-              globalAudio?.play().then(() => {
-                setIsPlaying(true);
-              }).catch(console.error);
-              
-              // Remove all listeners after first successful play
-              document.removeEventListener('click', startOnInteraction);
-              document.removeEventListener('touchstart', startOnInteraction);
-              document.removeEventListener('scroll', startOnInteraction);
-              document.removeEventListener('keydown', startOnInteraction);
-              document.removeEventListener('mousemove', startOnInteraction);
-            };
-            
-            // Add multiple event listeners for better mobile coverage
-            document.addEventListener('click', startOnInteraction, { once: true });
-            document.addEventListener('touchstart', startOnInteraction, { once: true });
-            document.addEventListener('scroll', startOnInteraction, { once: true });
-            document.addEventListener('keydown', startOnInteraction, { once: true });
-            document.addEventListener('mousemove', startOnInteraction, { once: true });
-          });
-        }
+        startMusic();
       };
 
       const handlePlay = () => {
@@ -62,8 +80,14 @@ export const useBackgroundMusic = (audioUrl: string, volume: number = 0.15) => {
       globalAudio.addEventListener('play', handlePlay);
       globalAudio.addEventListener('pause', handlePause);
       
-      // Try immediate load
+      // Force immediate load and play attempt
       globalAudio.load();
+      
+      // Try to start immediately without waiting
+      setTimeout(() => {
+        startMusic();
+      }, 50);
+      
     } else if (globalAudio) {
       // If already initialized, just sync state
       setIsPlaying(!globalAudio.paused);
